@@ -82,6 +82,11 @@ export {
   ProvidedRequiredArguments as ProvidedRequiredArgumentsRule,
 } from './rules/ProvidedRequiredArguments';
 
+// Spec Section: TBD
+export {
+  RequireErrorFields as RequireErrorFields,
+} from './rules/RequireErrorFields';
+
 // Spec Section: "Leaf Field Selections"
 export { ScalarLeafs as ScalarLeafsRule } from './rules/ScalarLeafs';
 

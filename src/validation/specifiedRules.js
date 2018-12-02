@@ -78,6 +78,9 @@ import { ValuesOfCorrectType } from './rules/ValuesOfCorrectType';
 // Spec Section: "Argument Optionality"
 import { ProvidedRequiredArguments } from './rules/ProvidedRequiredArguments';
 
+// Spec Section: TBD
+import { RequireErrorFields } from './rules/RequireErrorFields';
+
 // Spec Section: "All Variable Usages Are Allowed"
 import { VariablesInAllowedPosition } from './rules/VariablesInAllowedPosition';
 
@@ -120,6 +123,7 @@ export const specifiedRules: $ReadOnlyArray<ValidationRule> = [
   VariablesInAllowedPosition,
   OverlappingFieldsCanBeMerged,
   UniqueInputFieldNames,
+  RequireErrorFields,
 ];
 
 import { LoneSchemaDefinition } from './rules/LoneSchemaDefinition';
