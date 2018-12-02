@@ -36,6 +36,7 @@ import type {
   FieldNode,
   FragmentDefinitionNode,
   ValueNode,
+  ErrorTypeDefinitionNode,
 } from '../language/ast';
 import type { GraphQLSchema } from './schema';
 import type { MaybePromise } from '../jsutils/MaybePromise';
@@ -53,12 +54,14 @@ export type GraphQLType =
   | GraphQLEnumType
   | GraphQLInputObjectType
   | GraphQLList<any>
-  | GraphQLNonNull<any>;
+  | GraphQLNonNull<any>
+  | GraphQLErrorType;
 
 export function isType(type: mixed): boolean %checks {
   return (
     isScalarType(type) ||
     isObjectType(type) ||
+    isErrorType(type) ||
     isInterfaceType(type) ||
     isUnionType(type) ||
     isEnumType(type) ||
@@ -103,6 +106,21 @@ export function assertObjectType(type: mixed): GraphQLObjectType {
   invariant(
     isObjectType(type),
     `Expected ${inspect(type)} to be a GraphQL Object type.`,
+  );
+  return type;
+}
+
+declare function isErrorType(type: mixed): boolean %checks(type instanceof
+  GraphQLErrorType);
+// eslint-disable-next-line no-redeclare
+export function isErrorType(type) {
+  return instanceOf(type, GraphQLErrorType);
+}
+
+export function assertErrorType(type: mixed): GraphQLErrorType {
+  invariant(
+    isErrorType(type),
+    `Expected ${inspect(type)} to be a GraphQL Error type.`,
   );
   return type;
 }
@@ -235,6 +253,7 @@ export function assertInputType(type: mixed): GraphQLInputType {
 export type GraphQLOutputType =
   | GraphQLScalarType
   | GraphQLObjectType
+  | GraphQLErrorType
   | GraphQLInterfaceType
   | GraphQLUnionType
   | GraphQLEnumType
@@ -252,6 +271,7 @@ export function isOutputType(type: mixed): boolean %checks {
   return (
     isScalarType(type) ||
     isObjectType(type) ||
+    isErrorType(type) ||
     isInterfaceType(type) ||
     isUnionType(type) ||
     isEnumType(type) ||
@@ -459,6 +479,7 @@ export function getNullableType(type) {
  */
 export type GraphQLNamedType =
   | GraphQLScalarType
+  | GraphQLErrorType
   | GraphQLObjectType
   | GraphQLInterfaceType
   | GraphQLUnionType
@@ -469,6 +490,7 @@ export function isNamedType(type: mixed): boolean %checks {
   return (
     isScalarType(type) ||
     isObjectType(type) ||
+    isErrorType(type) ||
     isInterfaceType(type) ||
     isUnionType(type) ||
     isEnumType(type) ||
@@ -676,13 +698,57 @@ export class GraphQLObjectType {
     return this.name;
   }
 }
+export class GraphQLErrorType {
+  name: string;
+  description: ?string;
+  astNode: ?ErrorTypeDefinitionNode;
+  extensionASTNodes: ?$ReadOnlyArray<ObjectTypeExtensionNode>;
+  isTypeOf: ?GraphQLIsTypeOfFn<*, *>;
+
+  _fields: Thunk<GraphQLFieldMap<*, *>>;
+  _interfaces: Thunk<Array<GraphQLInterfaceType>>;
+
+  constructor(config: GraphQLErrorTypeConfig<*, *>): void {
+    this.name = config.name;
+    this.description = config.description;
+    this.astNode = config.astNode;
+    this.extensionASTNodes = config.extensionASTNodes;
+    this.isTypeOf = config.isTypeOf;
+    this._fields = defineFieldMap.bind(undefined, config);
+    this._interfaces = defineInterfaces.bind(undefined, config);
+    invariant(typeof config.name === 'string', 'Must provide name.');
+    invariant(
+      config.isTypeOf == null || typeof config.isTypeOf === 'function',
+      `${this.name} must provide "isTypeOf" as a function, ` +
+        `but got: ${inspect(config.isTypeOf)}.`,
+    );
+  }
+
+  getFields(): GraphQLFieldMap<*, *> {
+    if (typeof this._fields === 'function') {
+      this._fields = this._fields();
+    }
+    return this._fields;
+  }
+
+  getInterfaces(): Array<GraphQLInterfaceType> {
+    if (typeof this._interfaces === 'function') {
+      this._interfaces = this._interfaces();
+    }
+    return this._interfaces;
+  }
+
+  toString(): string {
+    return this.name;
+  }
+}
 
 // Conditionally apply `[Symbol.toStringTag]` if `Symbol`s are supported
 defineToStringTag(GraphQLObjectType);
 defineToJSON(GraphQLObjectType);
 
 function defineInterfaces(
-  config: GraphQLObjectTypeConfig<*, *>,
+  config: GraphQLObjectTypeConfig<*, *> | GraphQLErrorTypeConfig<*, *>,
 ): Array<GraphQLInterfaceType> {
   const interfaces = resolveThunk(config.interfaces) || [];
   invariant(
@@ -696,7 +762,8 @@ function defineInterfaces(
 function defineFieldMap<TSource, TContext>(
   config:
     | GraphQLObjectTypeConfig<TSource, TContext>
-    | GraphQLInterfaceTypeConfig<TSource, TContext>,
+    | GraphQLInterfaceTypeConfig<TSource, TContext>
+    | GraphQLErrorTypeConfig<TSource, TContext>,
 ): GraphQLFieldMap<TSource, TContext> {
   const fieldMap = resolveThunk(config.fields) || {};
   invariant(
@@ -766,6 +833,16 @@ export type GraphQLObjectTypeConfig<TSource, TContext> = {|
   extensionASTNodes?: ?$ReadOnlyArray<ObjectTypeExtensionNode>,
 |};
 
+export type GraphQLErrorTypeConfig<TSource, TContext> = {|
+  name: string,
+  interfaces?: Thunk<?Array<GraphQLInterfaceType>>,
+  fields: Thunk<GraphQLFieldConfigMap<TSource, TContext>>,
+  isTypeOf?: ?GraphQLIsTypeOfFn<TSource, TContext>,
+  description?: ?string,
+  astNode?: ?ErrorTypeDefinitionNode,
+  extensionASTNodes?: ?$ReadOnlyArray<ObjectTypeExtensionNode>,
+|};
+
 export type GraphQLTypeResolver<TSource, TContext> = (
   value: TSource,
   context: TContext,
@@ -793,7 +870,7 @@ export type GraphQLResolveInfo = {|
   +fieldName: string,
   +fieldNodes: $ReadOnlyArray<FieldNode>,
   +returnType: GraphQLOutputType,
-  +parentType: GraphQLObjectType,
+  +parentType: GraphQLObjectType | GraphQLErrorType,
   +path: ResponsePath,
   +schema: GraphQLSchema,
   +fragments: ObjMap<FragmentDefinitionNode>,

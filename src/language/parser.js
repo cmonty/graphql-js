@@ -62,6 +62,7 @@ import type {
   UnionTypeExtensionNode,
   EnumTypeExtensionNode,
   InputObjectTypeExtensionNode,
+  ErrorTypeDefinitionNode,
 } from './ast';
 
 import { Kind } from './kinds';
@@ -225,6 +226,7 @@ function parseDefinition(lexer: Lexer<*>): DefinitionNode {
       case 'enum':
       case 'input':
       case 'directive':
+      case 'error':
         return parseTypeSystemDefinition(lexer);
       case 'extend':
         return parseTypeSystemExtension(lexer);
@@ -769,6 +771,8 @@ function parseTypeSystemDefinition(lexer: Lexer<*>): TypeSystemDefinitionNode {
         return parseScalarTypeDefinition(lexer);
       case 'type':
         return parseObjectTypeDefinition(lexer);
+      case 'error':
+        return parseErrorTypeDefinition(lexer);
       case 'interface':
         return parseInterfaceTypeDefinition(lexer);
       case 'union':
@@ -870,6 +874,30 @@ function parseObjectTypeDefinition(lexer: Lexer<*>): ObjectTypeDefinitionNode {
   const fields = parseFieldsDefinition(lexer);
   return {
     kind: Kind.OBJECT_TYPE_DEFINITION,
+    description,
+    name,
+    interfaces,
+    directives,
+    fields,
+    loc: loc(lexer, start),
+  };
+}
+
+/**
+ * ErrorTypeDefinition :
+ *   Description?
+ *   type Name ImplementsInterfaces? Directives[Const]? FieldsDefinition?
+ */
+function parseErrorTypeDefinition(lexer: Lexer<*>): ErrorTypeDefinitionNode {
+  const start = lexer.token;
+  const description = parseDescription(lexer);
+  expectKeyword(lexer, 'error');
+  const name = parseName(lexer);
+  const interfaces = parseImplementsInterfaces(lexer);
+  const directives = parseDirectives(lexer, true);
+  const fields = parseFieldsDefinition(lexer);
+  return {
+    kind: Kind.ERROR_TYPE_DEFINITION,
     description,
     name,
     interfaces,

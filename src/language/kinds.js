@@ -54,6 +54,7 @@ export const Kind = Object.freeze({
   // Type Definitions
   SCALAR_TYPE_DEFINITION: 'ScalarTypeDefinition',
   OBJECT_TYPE_DEFINITION: 'ObjectTypeDefinition',
+  ERROR_TYPE_DEFINITION: 'ErrorTypeDefinition',
   FIELD_DEFINITION: 'FieldDefinition',
   INPUT_VALUE_DEFINITION: 'InputValueDefinition',
   INTERFACE_TYPE_DEFINITION: 'InterfaceTypeDefinition',

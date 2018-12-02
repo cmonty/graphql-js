@@ -39,6 +39,7 @@ import type {
   DirectiveDefinitionNode,
   StringValueNode,
   Location,
+  ErrorTypeDefinitionNode,
 } from '../language/ast';
 import { isTypeDefinitionNode } from '../language/predicates';
 
@@ -55,6 +56,7 @@ import type {
 import {
   GraphQLScalarType,
   GraphQLObjectType,
+  GraphQLErrorType,
   GraphQLInterfaceType,
   GraphQLUnionType,
   GraphQLEnumType,
@@ -325,6 +327,8 @@ export class ASTDefinitionBuilder {
     switch (def.kind) {
       case Kind.OBJECT_TYPE_DEFINITION:
         return this._makeTypeDef(def);
+      case Kind.ERROR_TYPE_DEFINITION:
+        return this._makeErrorTypeDef(def);
       case Kind.INTERFACE_TYPE_DEFINITION:
         return this._makeInterfaceDef(def);
       case Kind.ENUM_TYPE_DEFINITION:
@@ -356,8 +360,27 @@ export class ASTDefinitionBuilder {
     });
   }
 
+  _makeErrorTypeDef(def: ErrorTypeDefinitionNode) {
+    const interfaces: ?$ReadOnlyArray<NamedTypeNode> = def.interfaces;
+    return new GraphQLErrorType({
+      name: def.name.value,
+      description: getDescription(def, this._options),
+      fields: () => this._makeFieldDefMap(def),
+      // Note: While this could make early assertions to get the correctly
+      // typed values, that would throw immediately while type system
+      // validation with validateSchema() will produce more actionable results.
+      interfaces: interfaces
+        ? () => interfaces.map(ref => (this.buildType(ref): any))
+        : [],
+      astNode: def,
+    });
+  }
+
   _makeFieldDefMap(
-    def: ObjectTypeDefinitionNode | InterfaceTypeDefinitionNode,
+    def:
+      | ObjectTypeDefinitionNode
+      | InterfaceTypeDefinitionNode
+      | ErrorTypeDefinitionNode,
   ) {
     return def.fields
       ? keyValMap<_, GraphQLFieldConfig<mixed, mixed>>(

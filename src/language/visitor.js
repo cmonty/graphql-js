@@ -110,6 +110,13 @@ export const QueryDocumentKeys = {
     'directives',
     'fields',
   ],
+  ErrorTypeDefinition: [
+    'description',
+    'name',
+    'interfaces',
+    'directives',
+    'fields',
+  ],
   FieldDefinition: ['description', 'name', 'arguments', 'type', 'directives'],
   InputValueDefinition: [
     'description',

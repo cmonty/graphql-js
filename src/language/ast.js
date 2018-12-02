@@ -131,7 +131,8 @@ export type ASTNode =
   | InterfaceTypeExtensionNode
   | UnionTypeExtensionNode
   | EnumTypeExtensionNode
-  | InputObjectTypeExtensionNode;
+  | InputObjectTypeExtensionNode
+  | ErrorTypeDefinitionNode;
 
 /**
  * Utility type listing all nodes indexed by their kind.
@@ -165,6 +166,7 @@ export type ASTKindToNode = {|
   OperationTypeDefinition: OperationTypeDefinitionNode,
   ScalarTypeDefinition: ScalarTypeDefinitionNode,
   ObjectTypeDefinition: ObjectTypeDefinitionNode,
+  ErrorTypeDefinition: ErrorTypeDefinitionNode,
   FieldDefinition: FieldDefinitionNode,
   InputValueDefinition: InputValueDefinitionNode,
   InterfaceTypeDefinition: InterfaceTypeDefinitionNode,
@@ -392,7 +394,8 @@ export type NonNullTypeNode = {
 export type TypeSystemDefinitionNode =
   | SchemaDefinitionNode
   | TypeDefinitionNode
-  | DirectiveDefinitionNode;
+  | DirectiveDefinitionNode
+  | ErrorTypeDefinitionNode;
 
 export type SchemaDefinitionNode = {
   +kind: 'SchemaDefinition',
@@ -416,7 +419,8 @@ export type TypeDefinitionNode =
   | InterfaceTypeDefinitionNode
   | UnionTypeDefinitionNode
   | EnumTypeDefinitionNode
-  | InputObjectTypeDefinitionNode;
+  | InputObjectTypeDefinitionNode
+  | ErrorTypeDefinitionNode;
 
 export type ScalarTypeDefinitionNode = {
   +kind: 'ScalarTypeDefinition',
@@ -428,6 +432,16 @@ export type ScalarTypeDefinitionNode = {
 
 export type ObjectTypeDefinitionNode = {
   +kind: 'ObjectTypeDefinition',
+  +loc?: Location,
+  +description?: StringValueNode,
+  +name: NameNode,
+  +interfaces?: $ReadOnlyArray<NamedTypeNode>,
+  +directives?: $ReadOnlyArray<DirectiveNode>,
+  +fields?: $ReadOnlyArray<FieldDefinitionNode>,
+};
+
+export type ErrorTypeDefinitionNode = {
+  +kind: 'ErrorTypeDefinition',
   +loc?: Location,
   +description?: StringValueNode,
   +name: NameNode,

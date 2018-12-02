@@ -20,6 +20,8 @@ import {
   isUnionType,
   isEnumType,
   isInputObjectType,
+  isErrorType,
+  GraphQLErrorType,
 } from '../type/definition';
 import type {
   GraphQLNamedType,
@@ -166,6 +168,8 @@ export function printType(type: GraphQLNamedType, options?: Options): string {
     return printScalar(type, options);
   } else if (isObjectType(type)) {
     return printObject(type, options);
+  } else if (isErrorType(type)) {
+    return printObject(type, options);
   } else if (isInterfaceType(type)) {
     return printInterface(type, options);
   } else if (isUnionType(type)) {
@@ -183,7 +187,10 @@ function printScalar(type: GraphQLScalarType, options): string {
   return printDescription(options, type) + `scalar ${type.name}`;
 }
 
-function printObject(type: GraphQLObjectType, options): string {
+function printObject(
+  type: GraphQLObjectType | GraphQLErrorType,
+  options,
+): string {
   const interfaces = type.getInterfaces();
   const implementedInterfaces = interfaces.length
     ? ' implements ' + interfaces.map(i => i.name).join(' & ')

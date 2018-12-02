@@ -14,6 +14,7 @@ import {
   isUnionType,
   isInputObjectType,
   isWrappingType,
+  GraphQLErrorType,
 } from './definition';
 import type {
   GraphQLType,
@@ -213,7 +214,7 @@ export class GraphQLSchema {
 
   isPossibleType(
     abstractType: GraphQLAbstractType,
-    possibleType: GraphQLObjectType,
+    possibleType: GraphQLObjectType | GraphQLErrorType,
   ): boolean {
     let possibleTypeMap = this._possibleTypeMap;
     if (!possibleTypeMap) {

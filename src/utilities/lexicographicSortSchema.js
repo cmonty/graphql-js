@@ -29,6 +29,8 @@ import {
   isUnionType,
   isEnumType,
   isInputObjectType,
+  isErrorType,
+  GraphQLErrorType,
 } from '../type/definition';
 import { isSpecifiedScalarType } from '../type/scalars';
 import { isIntrospectionType } from '../type/introspection';
@@ -122,6 +124,16 @@ export function lexicographicSortSchema(schema: GraphQLSchema): GraphQLSchema {
       return type;
     } else if (isObjectType(type)) {
       return new GraphQLObjectType({
+        name: type.name,
+        interfaces: () => sortTypes(type.getInterfaces()),
+        fields: () => sortFields(type.getFields()),
+        isTypeOf: type.isTypeOf,
+        description: type.description,
+        astNode: type.astNode,
+        extensionASTNodes: type.extensionASTNodes,
+      });
+    } else if (isErrorType(type)) {
+      return new GraphQLErrorType({
         name: type.name,
         interfaces: () => sortTypes(type.getInterfaces()),
         fields: () => sortFields(type.getFields()),

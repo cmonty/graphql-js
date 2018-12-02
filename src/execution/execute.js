@@ -35,6 +35,8 @@ import {
   isLeafType,
   isListType,
   isNonNullType,
+  isErrorType,
+  GraphQLErrorType,
 } from '../type/definition';
 import type {
   GraphQLObjectType,
@@ -462,7 +464,7 @@ function executeFieldsSerially(
  */
 function executeFields(
   exeContext: ExecutionContext,
-  parentType: GraphQLObjectType,
+  parentType: GraphQLObjectType | GraphQLErrorType,
   sourceValue: mixed,
   path: ResponsePath | void,
   fields: ObjMap<Array<FieldNode>>,
@@ -511,7 +513,7 @@ function executeFields(
  */
 export function collectFields(
   exeContext: ExecutionContext,
-  runtimeType: GraphQLObjectType,
+  runtimeType: GraphQLObjectType | GraphQLErrorType,
   selectionSet: SelectionSetNode,
   fields: ObjMap<Array<FieldNode>>,
   visitedFragmentNames: ObjMap<boolean>,
@@ -607,7 +609,7 @@ function shouldIncludeNode(
 function doesFragmentConditionMatch(
   exeContext: ExecutionContext,
   fragment: FragmentDefinitionNode | InlineFragmentNode,
-  type: GraphQLObjectType,
+  type: GraphQLObjectType | GraphQLErrorType,
 ): boolean {
   const typeConditionNode = fragment.typeCondition;
   if (!typeConditionNode) {
@@ -638,7 +640,7 @@ function getFieldEntryKey(node: FieldNode): string {
  */
 function resolveField(
   exeContext: ExecutionContext,
-  parentType: GraphQLObjectType,
+  parentType: GraphQLObjectType | GraphQLErrorType,
   source: mixed,
   fieldNodes: $ReadOnlyArray<FieldNode>,
   path: ResponsePath,
@@ -686,7 +688,7 @@ export function buildResolveInfo(
   exeContext: ExecutionContext,
   fieldDef: GraphQLField<*, *>,
   fieldNodes: $ReadOnlyArray<FieldNode>,
-  parentType: GraphQLObjectType,
+  parentType: GraphQLObjectType | GraphQLErrorType,
   path: ResponsePath,
 ): GraphQLResolveInfo {
   // The resolve function's optional fourth argument is a collection of
@@ -893,6 +895,17 @@ function completeValue(
     );
   }
 
+  // If field type is Error, execute and complete all sub-selections.
+  if (isErrorType(returnType)) {
+    return completeObjectValue(
+      exeContext,
+      returnType,
+      fieldNodes,
+      info,
+      path,
+      result,
+    );
+  }
   // If field type is Object, execute and complete all sub-selections.
   if (isObjectType(returnType)) {
     return completeObjectValue(
@@ -1069,7 +1082,7 @@ function ensureValidRuntimeType(
  */
 function completeObjectValue(
   exeContext: ExecutionContext,
-  returnType: GraphQLObjectType,
+  returnType: GraphQLObjectType | GraphQLErrorType,
   fieldNodes: $ReadOnlyArray<FieldNode>,
   info: GraphQLResolveInfo,
   path: ResponsePath,
@@ -1111,7 +1124,7 @@ function completeObjectValue(
 }
 
 function invalidReturnTypeError(
-  returnType: GraphQLObjectType,
+  returnType: GraphQLObjectType | GraphQLErrorType,
   result: mixed,
   fieldNodes: $ReadOnlyArray<FieldNode>,
 ): GraphQLError {
@@ -1123,7 +1136,7 @@ function invalidReturnTypeError(
 
 function collectAndExecuteSubfields(
   exeContext: ExecutionContext,
-  returnType: GraphQLObjectType,
+  returnType: GraphQLObjectType | GraphQLErrorType,
   fieldNodes: $ReadOnlyArray<FieldNode>,
   path: ResponsePath,
   result: mixed,
@@ -1141,7 +1154,7 @@ function collectAndExecuteSubfields(
 const collectSubfields = memoize3(_collectSubfields);
 function _collectSubfields(
   exeContext: ExecutionContext,
-  returnType: GraphQLObjectType,
+  returnType: GraphQLObjectType | GraphQLErrorType,
   fieldNodes: $ReadOnlyArray<FieldNode>,
 ): ObjMap<Array<FieldNode>> {
   let subFieldNodes = Object.create(null);
@@ -1248,7 +1261,7 @@ export const defaultFieldResolver: GraphQLFieldResolver<any, *> = function(
  */
 export function getFieldDef(
   schema: GraphQLSchema,
-  parentType: GraphQLObjectType,
+  parentType: GraphQLObjectType | GraphQLErrorType,
   fieldName: string,
 ): ?GraphQLField<*, *> {
   if (

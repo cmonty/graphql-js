@@ -123,6 +123,25 @@ describe('Schema Parser', () => {
     );
   });
 
+  it('parses error with description string', () => {
+    const doc = parse(dedent`
+      "Error Description"
+      error Hello {
+        world: String
+      }
+    `);
+
+    expect(toJSONDeep(doc)).to.nested.deep.property(
+      'definitions[0].description',
+      {
+        kind: 'StringValue',
+        value: 'Error Description',
+        block: false,
+        loc: { start: 0, end: 19 },
+      },
+    );
+  });
+
   it('parses type with description multi-line string', () => {
     const doc = parse(dedent`
       """
