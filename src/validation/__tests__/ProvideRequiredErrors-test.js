@@ -13,11 +13,19 @@ import { expectFailsRuleWithSchema, expectPassesRuleWithSchema } from './harness
 import {
   RequireErrorFields,
   missingErrorMessage,
+  missingErrorTypeMessage,
 } from '../rules/RequireErrorFields';
+
+function errorFieldRequired(fieldName, line, column) {
+  return {
+    message: missingErrorMessage(fieldName),
+    locations: [{ line, column }],
+  };
+}
 
 function errorTypeRequired(fieldName, line, column) {
   return {
-    message: missingErrorMessage(fieldName),
+    message: missingErrorTypeMessage(fieldName),
     locations: [{ line, column }],
   };
 }
@@ -48,7 +56,48 @@ describe('Validate: Selected required errors', () => {
         }
       }
     `,
-      [errorTypeRequired('userErrors', 3, 13)],
+      [errorFieldRequired('userErrors', 3, 9)],
+    );
+  });
+
+  it('errors for missing nested selection', () => {
+    const schema = buildSchema(`
+        error UserError {
+          code: String
+        }
+
+        type Owner {
+          name: String
+          userErrors: [UserError]
+        }
+
+        type Dog {
+          name: String
+          owner: Owner
+          userErrors: [UserError]
+        }
+
+        type Query {
+          dog: Dog
+        }
+    `);
+    expectFailsRuleWithSchema(
+      schema,
+      RequireErrorFields,
+      `
+      {
+        dog {
+          name
+          owner {
+            name
+          }
+          userErrors {
+            code
+          }
+        }
+      }
+    `,
+      [errorFieldRequired('userErrors', 5, 11)],
     );
   });
 
@@ -114,7 +163,7 @@ describe('Validate: Selected required errors', () => {
         }
       }
     `,
-      [errorTypeRequired('userErrors', 3, 13)],
+      [errorFieldRequired('userErrors', 3, 9)],
     );
   });
 
@@ -154,6 +203,48 @@ describe('Validate: Selected required errors', () => {
         }
       }
     `,
+    );
+  });
+
+  it('errors for complex interface', () => {
+    const schema = buildSchema(`
+      interface IGenericError {
+        message: String
+      }
+    
+      interface IHttpError {
+        message: String
+        statusCode: String
+      }
+    
+      error HttpError implements IGenericError & IHttpError {
+        message: String
+        statusCode: String
+      }
+
+      type User {
+        name: String
+      }
+    
+      union UserOrError = User | HttpError
+    
+      type Query {
+        user: UserOrError
+      }
+    `);
+    expectFailsRuleWithSchema(
+      schema,
+      RequireErrorFields,
+      `
+      {
+        user {
+          ...on User {
+            name
+          }
+        }
+      }
+    `,
+      [errorTypeRequired('HttpError', 3, 14)],
     );
   });
 });
