@@ -10,7 +10,7 @@
 import type { ValidationContext } from '../ValidationContext';
 import type { ASTVisitor } from '../../language/visitor';
 import type { SelectionSetNode } from '../../language/ast';
-import { isErrorType, isListType } from '../../type/definition';
+import { isErrorType, isListType, isUnionType } from '../../type/definition';
 import { GraphQLError } from '../../error';
 
 export function missingErrorMessage(fieldName: string): string {
@@ -37,7 +37,12 @@ export function RequireErrorFields(context: ValidationContext): ASTVisitor {
         const entries = Object.entries(fields);
         const errorTypes = entries
           .filter(([_, field]) => {
+            // console.dir(field, {depth: 3});
             if (isListType(field.type)) {
+              if (isUnionType(field.type.ofType)) {
+                return isErrorType(field.type.ofType._types[0]);
+              }
+
               return isErrorType(field.type.ofType);
             }
 
@@ -45,9 +50,11 @@ export function RequireErrorFields(context: ValidationContext): ASTVisitor {
           })
           .map(([name, _]) => name);
 
-        const selections = node.selections.map(
-          selection => selection.name.value,
-        );
+        const selections = node.selections
+          .filter(selection => selection.name)
+          .map(
+            selection => selection.name.value,
+          );
 
         errorTypes.forEach(error => {
           if (!selections.includes(error)) {

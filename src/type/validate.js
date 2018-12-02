@@ -17,6 +17,7 @@ import {
   isInputType,
   isOutputType,
   isRequiredArgument,
+  isErrorType,
 } from './definition';
 import type {
   GraphQLObjectType,
@@ -473,7 +474,7 @@ function validateUnionMembers(
       continue;
     }
     includedTypeNames[memberType.name] = true;
-    if (!isObjectType(memberType)) {
+    if (!isObjectType(memberType) && !isErrorType(memberType)) {
       context.reportError(
         `Union type ${union.name} can only include Object types, ` +
           `it cannot include ${inspect(memberType)}.`,

@@ -9,7 +9,7 @@
 
 import { describe, it } from 'mocha';
 import { buildSchema } from '../../utilities';
-import { expectFailsRuleWithSchema } from './harness';
+import { expectFailsRuleWithSchema, expectPassesRuleWithSchema } from './harness';
 import {
   RequireErrorFields,
   missingErrorMessage,
@@ -49,6 +49,111 @@ describe('Validate: Selected required errors', () => {
       }
     `,
       [errorTypeRequired('userErrors', 3, 13)],
+    );
+  });
+
+  it('does not return errors when selection an error', () => {
+    const schema = buildSchema(`
+        error UserError {
+          code: String
+        }
+
+        type Dog {
+          name: String
+          userErrors: [UserError]
+        }
+
+        type Query {
+          dog: Dog
+        }
+    `);
+    expectPassesRuleWithSchema(
+      schema,
+      RequireErrorFields,
+      `
+      {
+        dog {
+          name
+          userErrors {
+            code
+          }
+        }
+      }
+    `,
+    );
+  });
+
+  it('errors for missing selection of union of errors', () => {
+    const schema = buildSchema(`
+        error UserError {
+          code: String
+        }
+
+        error HTTPError {
+          message: String
+        }
+
+        union ServiceErrors = UserError | HTTPError
+
+        type Dog {
+          name: String
+          userErrors: [ServiceErrors]
+        }
+
+        type Query {
+          dog: Dog
+        }
+    `);
+    expectFailsRuleWithSchema(
+      schema,
+      RequireErrorFields,
+      `
+      {
+        dog {
+          name
+        }
+      }
+    `,
+      [errorTypeRequired('userErrors', 3, 13)],
+    );
+  });
+
+  it('passes rule with fragment selection', () => {
+    const schema = buildSchema(`
+        error UserError {
+          code: String
+        }
+
+        error HTTPError {
+          message: String
+        }
+
+        union ServiceErrors = UserError | HTTPError
+
+        type Dog {
+          name: String
+          userErrors: [ServiceErrors]
+        }
+
+        type Query {
+          dog: Dog
+        }
+    `);
+    expectPassesRuleWithSchema(
+      schema,
+      RequireErrorFields,
+      `
+      {
+        dog {
+          name
+          userErrors {
+            ...on UserError {
+              code
+            }
+          }
+        }
+      }
+    `,
     );
   });
 });
