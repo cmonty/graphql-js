@@ -22,7 +22,7 @@ export function missingErrorTypeMessage(typeName: string): string {
   return `Error type "${typeName}" is required to be selected in union`;
 }
 
-function getErrorTypes(entries: Array) {
+function getErrorTypes(entries: Array<any>) {
   return entries
     .filter(([_, field]) => {
       if (isListType(field.type)) {
@@ -54,23 +54,36 @@ export function RequireErrorFields(context: ValidationContext): ASTVisitor {
           return false;
         }
 
-        const inlineFragments = node.selections
-          .filter(selection => selection.kind === Kind.INLINE_FRAGMENT)
-          .map(selection => selection.typeCondition.name.value);
+        const inlineFragments = node.selections.reduce((accum, selection) => {
+          if (selection.kind === Kind.INLINE_FRAGMENT) {
+            const inlineFragmentValue =
+              selection.typeCondition && selection.typeCondition.name.value;
+
+            if (inlineFragmentValue) {
+              return accum.concat(inlineFragmentValue);
+            }
+          }
+
+          return accum;
+        }, []);
 
         if (inlineFragments.length === 0) {
           return false;
         }
-        const errorTypes = fieldDef.type._types.filter(type => isErrorType(type));
 
-        errorTypes.forEach(errorType => {
-          if (!inlineFragments.includes(errorType.name)) {
-            context.reportError(
-              new GraphQLError(missingErrorTypeMessage(errorType.name), [node]),
-            );
-          }
-        });
-      }
+        // TODO: This is a redundant check and should be fixed
+        if (isUnionType(fieldDef.type)) {
+          fieldDef.type._types.forEach(type => {
+            if (isErrorType(type)) {
+              if (!inlineFragments.includes(type.name)) {
+                context.reportError(
+                  new GraphQLError(missingErrorTypeMessage(type.name), [node]),
+                );
+              }
+            }
+          });
+        }
+      },
     },
     Field: {
       // Validate on leave to allow for deeper errors to appear first.
@@ -86,11 +99,16 @@ export function RequireErrorFields(context: ValidationContext): ASTVisitor {
         const errorTypes = getErrorTypes(entries);
 
         if (node.selectionSet) {
-          const selections = node.selectionSet.selections
-            .filter(selection => selection.name)
-            .map(
-              selection => selection.name.value,
-            );
+          const selections = node.selectionSet.selections.reduce(
+            (accum, val) => {
+              if (val.kind !== Kind.INLINE_FRAGMENT) {
+                return accum.concat(val.name.value);
+              }
+
+              return accum;
+            },
+            [],
+          );
 
           errorTypes.forEach(error => {
             if (!selections.includes(error)) {

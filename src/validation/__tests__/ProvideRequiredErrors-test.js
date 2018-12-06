@@ -9,7 +9,10 @@
 
 import { describe, it } from 'mocha';
 import { buildSchema } from '../../utilities';
-import { expectFailsRuleWithSchema, expectPassesRuleWithSchema } from './harness';
+import {
+  expectFailsRuleWithSchema,
+  expectPassesRuleWithSchema,
+} from './harness';
 import {
   RequireErrorFields,
   missingErrorMessage,
